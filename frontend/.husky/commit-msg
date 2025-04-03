@@ -1,0 +1,13 @@
+#!/usr/bin/env sh
+
+commit_msg=$(cat "$1")
+
+# Check if commit message matches pattern [Name] Commit
+if ! echo "$commit_msg" | grep -qE '^\[.+\] .+$'; then
+  echo "❌ Error: Commit message must follow pattern: [Name] Commit"
+  echo "✨ Example: [Chi] Add new feature"
+  echo "✨ Example: [Chi] Fix login bug"
+  exit 1
+fi
+
+echo "✅ Commit message format is valid!"
