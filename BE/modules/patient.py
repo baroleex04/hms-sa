@@ -51,7 +51,6 @@ class Patient:
         self.medical_history = medical_history
 
     @staticmethod
-    @staticmethod
     def get_patient_details(patient_id: Optional[str] = None, name: Optional[str] = None):
         """Retrieve patient details from MySQL."""
         conn = get_db_connection()

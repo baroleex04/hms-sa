@@ -1,5 +1,7 @@
 from flask import Flask, jsonify, request
 from modules.patient import Patient, MedicalHistory, get_db_connection
+import mysql.connector
+import uuid
 
 app = Flask(__name__)
 
@@ -169,6 +171,82 @@ def update_allergies():
         return jsonify({"message": "Allergies updated successfully!"}), 200
     else:
         return jsonify({"error": "No medical history found."}), 400
+
+# http://127.0.0.1:5000/patient/add
+# body
+# {
+#     "patient_id": "P005",
+# "name": "Jane Doe",
+# "date_of_birth": "1990-05-15",
+# "contact_info": "09123456789",
+# "condition": "Asthma",
+# "allergies": ["Peanuts", "Dust"]
+# }
+@app.route("/patient/add", methods=["POST"])
+def add_patient():
+    """Add a new patient and medical history."""
+    data = request.get_json()
+
+    patient_id = data.get("patient_id")
+    condition = data.get("condition")
+    allergies = data.get("allergies")
+
+    if not patient_id or not condition or not allergies:
+        return jsonify({"error": "patient_id, condition, and allergies are required."}), 400
+
+    # Generate a unique history_id using UUID
+    history_id = str(uuid.uuid4())  # UUID as a string
+
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+
+        # Insert patient information
+        cursor.execute("INSERT INTO Patient (patient_id, name, date_of_birth, contact_info) VALUES (%s, %s, %s, %s)",
+                       (patient_id, data["name"], data["date_of_birth"], data["contact_info"]))
+        
+        # Insert medical history information with the generated history_id
+        cursor.execute("INSERT INTO MedicalHistory (history_id, patient_id, `condition`, allergies) VALUES (%s, %s, %s, %s)",
+                       (history_id, patient_id, condition, ",".join(allergies)))  # Join allergies list into a string
+
+        conn.commit()
+        conn.close()
+
+        return jsonify({"message": "Patient and medical history added successfully!"}), 201
+
+    except mysql.connector.Error as err:
+        return jsonify({"error": str(err)}), 500
+
+# http://127.0.0.1:5000/patient/delete
+# params: "patent_id"
+@app.route("/patient/delete", methods=["DELETE"])
+def delete_patient():
+    """Delete a patient and their medical history from the database."""
+    patient_id = request.args.get("patient_id")
+
+    # Validate patient_id
+    if not patient_id:
+        return jsonify({"error": "patient_id is required."}), 400
+
+    # Delete from MedicalHistory first (to avoid foreign key constraint issues)
+    conn = get_db_connection()
+    cursor = conn.cursor()
+
+    try:
+        cursor.execute("DELETE FROM MedicalHistory WHERE patient_id = %s", (patient_id,))
+        conn.commit()
+
+        # Then delete from Patient table
+        cursor.execute("DELETE FROM Patient WHERE patient_id = %s", (patient_id,))
+        conn.commit()
+
+        return jsonify({"message": "Patient and medical history deleted successfully!"}), 200
+    except mysql.connector.Error as err:
+        conn.rollback()  # Rollback if an error occurs
+        return jsonify({"error": str(err)}), 500
+    finally:
+        conn.close()
+
 
 # Start the Flask app
 if __name__ == "__main__":
