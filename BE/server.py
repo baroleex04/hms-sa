@@ -1,9 +1,190 @@
 from flask import Flask, jsonify, request
 from modules.patient import Patient, MedicalHistory, get_db_connection
+from modules.staff import Staff, StaffRole, Ward
 import mysql.connector
-import uuid
+import uuid, json
 
 app = Flask(__name__)
+
+# Example: http://127.0.0.1:5000/staff/add
+# body
+# {
+#   "staff_id": "D003",
+#   "name": "Dr. Alice Brown",
+#   "contact_info": "08111111111",
+#   "role": "Doctor",
+#   "specialization": "Neurology",
+#   "department": "Neurology",
+#   "shift": [["Monday", "Day"], ["Thursday", "Night"]]
+# }
+@app.route("/staff/add", methods=["POST"])
+def add_staff():
+    """Add a new staff member."""
+    data = request.get_json()
+
+    required_fields = ["staff_id", "name", "contact_info", "role"]
+    missing = [field for field in required_fields if field not in data]
+    if missing:
+        return jsonify({"error": f"Missing required fields: {', '.join(missing)}"}), 400
+
+    try:
+        staff_id = data["staff_id"]
+        name = data["name"]
+        contact_info = data["contact_info"]
+        role = data["role"]
+        specialization = data.get("specialization")
+        department = data.get("department")
+        ward = data.get("ward")
+        shift = data.get("shift", [])
+
+        # Validate role
+        if role not in StaffRole._value2member_map_:
+            return jsonify({"error": f"Invalid role '{role}'. Must be one of: {list(StaffRole._value2member_map_.keys())}"}), 400
+
+        # Validate ward if provided
+        if ward and ward not in Ward._value2member_map_:
+            return jsonify({"error": f"Invalid ward '{ward}'. Must be one of: {list(Ward._value2member_map_.keys())}"}), 400
+
+        conn = get_db_connection()
+        cursor = conn.cursor()
+
+        cursor.execute("""
+            INSERT INTO Staff (
+                staff_id, name, contact_info, role, specialization, department, ward, shift
+            ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+        """, (
+            staff_id, name, contact_info, role,
+            specialization, department, ward,
+            json.dumps(shift)
+        ))
+
+        conn.commit()
+        conn.close()
+
+        return jsonify({"message": "Staff member added successfully!"}), 201
+
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+      
+# Endpoint to get a specific staff member by staff_id
+# Example: http://127.0.0.1:5000/staff?staff_id=S001
+@app.route("/staff", methods=["GET"])
+def get_staff_by_id():
+    """Retrieve staff details by staff_id."""
+    staff_id = request.args.get("staff_id")
+
+    if not staff_id:
+        return jsonify({"error": "staff_id is required as a query parameter."}), 400
+
+    staff_data = Staff.get_staff_details(staff_id)
+
+    if isinstance(staff_data, str) and "No staff member found" in staff_data:
+        return jsonify({"error": staff_data}), 404
+
+    return jsonify(staff_data), 200
+
+# Endpoint to delete a specific staff member by staff_id
+# Example: http://127.0.0.1:5000/staff/delete?staff_id=S001
+@app.route("/staff/delete", methods=["DELETE"])
+def delete_staff():
+    """Delete a staff member by staff_id."""
+    staff_id = request.args.get("staff_id")
+
+    if not staff_id:
+        return jsonify({"error": "staff_id is required."}), 400
+
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+
+        # Check if staff exists
+        cursor.execute("SELECT * FROM Staff WHERE staff_id = %s", (staff_id,))
+        existing = cursor.fetchone()
+        if not existing:
+            return jsonify({"error": f"No staff found with ID: {staff_id}"}), 404
+
+        # Delete staff
+        cursor.execute("DELETE FROM Staff WHERE staff_id = %s", (staff_id,))
+        conn.commit()
+        conn.close()
+
+        return jsonify({"message": f"Staff with ID {staff_id} deleted successfully!"}), 200
+
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+# http://127.0.0.1:5000/staff
+@app.route("/staffs", methods=["GET"])
+def get_all_staff():
+    """Retrieve all staff members."""
+    conn = get_db_connection()
+    cursor = conn.cursor(dictionary=True)
+
+    cursor.execute("SELECT * FROM Staff")
+    staff_data = cursor.fetchall()
+    conn.close()
+
+    if not staff_data:
+        return jsonify({"error": "No staff members found."}), 404
+
+    staff_list = []
+    for record in staff_data:
+        staff = Staff(
+            staff_id=record["staff_id"],
+            name=record["name"],
+            contact_info=record["contact_info"],
+            role=StaffRole(record["role"]),
+            specialization=record.get("specialization"),
+            department=record.get("department"),
+            ward=Ward(record["ward"]) if record.get("ward") else None,
+            shift=record["shift"].split(",") if record.get("shift") else []
+        )
+        staff_list.append(staff.to_dict())
+
+    return jsonify(staff_list), 200
+  
+# Endpoint to update staff info (name or contact_info)
+# http://127.0.0.1:5000/staff/update_info
+# Body:
+# {
+#   "staff_id": "S001",
+#   "name": "Dr. John Smith",
+#   "contact_info": "08000000000"
+# }
+@app.route("/staff/update_info", methods=["PUT"])
+def update_staff_info():
+    """Update staff member's name or contact information."""
+    data = request.get_json()
+
+    staff_id = data.get("staff_id")
+    name = data.get("name")
+    contact_info = data.get("contact_info")
+
+    if not staff_id:
+        return jsonify({"error": "staff_id is required."}), 400
+
+    # Retrieve staff
+    staff_data = Staff.get_staff_details(staff_id)
+
+    if isinstance(staff_data, str) and "No staff member found" in staff_data:
+        return jsonify({"error": staff_data}), 404
+
+    # Create a Staff object from the returned dictionary
+    staff = Staff(
+        staff_id=staff_data["staff_id"],
+        name=staff_data["name"],
+        contact_info=staff_data["contact_info"],
+        role=StaffRole(staff_data["role"]),
+        specialization=staff_data.get("specialization"),
+        department=staff_data.get("department"),
+        ward=Ward(staff_data["ward"]) if staff_data.get("ward") else None,
+        shift=staff_data["shift"]
+    )
+
+    # Perform update
+    staff.update_info(name=name, contact_info=contact_info)
+
+    return jsonify({"message": "Staff info updated successfully!"}), 200
 
 # Endpoint to get a specific patient's details by patient_id or name
 # http://127.0.0.1:5000/patient?patient_id=P001
@@ -250,4 +431,4 @@ def delete_patient():
 
 # Start the Flask app
 if __name__ == "__main__":
-    app.run(debug=True)
+    app.run(host='0.0.0.0',debug=True)

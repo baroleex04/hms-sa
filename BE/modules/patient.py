@@ -2,14 +2,7 @@ import mysql.connector
 from typing import List, Optional
 
 # Database connection function
-def get_db_connection():
-    return mysql.connector.connect(
-        host="127.0.0.1",
-        port=3308,# Change to your DB host if needed
-        user="root",          # Your MySQL username
-        password="root",  # Your MySQL password
-        database="hospital_db"
-    )
+from db_connection.db import get_db_connection
 
 # MedicalHistory Class
 class MedicalHistory:
@@ -121,6 +114,6 @@ class Patient:
         }
 
 # Example Usage
-if __name__ == "__main__":
-    # Retrieve patient details from MySQL
-    print(Patient.get_patient_details(patient_id="P001"))
+# if __name__ == "__main__":
+#     # Retrieve patient details from MySQL
+#     print(Patient.get_patient_details(patient_id="P001"))

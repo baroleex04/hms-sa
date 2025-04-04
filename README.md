@@ -1,5 +1,6 @@
 # hms-sa
 This tutorial covers the essential Git commands for **branching, pulling, and pushing code** without affecting the `main` branch.
+
 ---
 ## 1️⃣ Cloning the Repository
 If you haven't cloned the repository yet, use:
