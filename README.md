@@ -54,3 +54,14 @@ Then run the below to open Flask server:
 python3 server.py
 ```
 Please make sure that you have python installed on your local environment.
+
+---
+## API documentation
+
+Please access this link to get the API documentation, please notice that the file works for application running at local environment and port 5000:
+
+```
+https://documenter.getpostman.com/view/29084125/2sB2cUANcU
+```
+
+Please access Postman to test.
