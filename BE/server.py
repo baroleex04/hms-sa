@@ -1,9 +1,20 @@
 from flask import Flask, jsonify, request
 from modules.patient import Patient, MedicalHistory, get_db_connection
+from modules.staff import StaffManagement
 import mysql.connector
 import uuid
 
 app = Flask(__name__)
+
+dbconn = mysql.connector.connect(
+  host="127.0.0.1",
+  port=3308,# Change to your DB host if needed
+  user="root",          # Your MySQL username
+  password="root",  # Your MySQL password
+  database="hospital_db"
+)
+
+moduleStaff = StaffManagement(dbconn)
 
 # Endpoint to get a specific patient's details by patient_id or name
 # http://127.0.0.1:5000/patient?patient_id=P001
