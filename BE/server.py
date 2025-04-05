@@ -1,10 +1,166 @@
 from flask import Flask, jsonify, request
 from modules.patient import Patient, MedicalHistory, get_db_connection
 from modules.staff import Staff, StaffRole, Ward
+from modules.user import User
 import mysql.connector
 import uuid, json
 
 app = Flask(__name__)
+
+# Get user by username
+# http://127.0.0.1:5000/user?username=admin@hospital.com
+@app.route("/user", methods=["GET"])
+def get_user_by_username():
+    username = request.args.get("username")
+    if not username:
+        return jsonify({"error": "username is required as a query parameter."}), 400
+
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor(dictionary=True)
+        cursor.execute("SELECT id, username, name FROM Users WHERE username = %s", (username,))
+        user = cursor.fetchone()
+        conn.close()
+
+        if not user:
+            return jsonify({"error": f"No user found with username: {username}"}), 404
+
+        return jsonify(user), 200
+
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+# Show all users
+# http://127.0.0.1:5000/users
+@app.route("/users", methods=["GET"])
+def get_all_users():
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor(dictionary=True)
+        cursor.execute("SELECT id, username, name FROM Users")
+        users = cursor.fetchall()
+        conn.close()
+
+        if not users:
+            return jsonify({"error": "No users found."}), 404
+
+        return jsonify(users), 200
+
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+# Add user
+# http://127.0.0.1:5000/user/add
+# body as password is hashed by backend
+# {
+#   "id": "U004",
+#   "username": "nurse@hospital.com",
+#   "password": "12345",
+#   "name": "Nurse Daisy"
+# }
+@app.route("/user/add", methods=["POST"])
+def add_user():
+    data = request.get_json()
+    required_fields = ["id", "username", "password", "name"]
+    missing = [field for field in required_fields if field not in data]
+
+    if missing:
+        return jsonify({"error": f"Missing fields: {', '.join(missing)}"}), 400
+    
+    hashed_password = User.hash_password(data["password"])
+
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute("""
+            INSERT INTO Users (id, username, password, name)
+            VALUES (%s, %s, %s, %s)
+        """, (
+            data["id"],
+            data["username"],
+            hashed_password,  # Assumed to be hashed
+            data["name"]
+        ))
+        conn.commit()
+        conn.close()
+
+        return jsonify({"message": "User added successfully!"}), 201
+
+    except mysql.connector.Error as err:
+        return jsonify({"error": str(err)}), 500
+
+
+# Delete user
+# http://127.0.0.1:5000/user/delete?id=U004
+@app.route("/user/delete", methods=["DELETE"])
+def delete_user():
+    user_id = request.args.get("id")
+    if not user_id:
+        return jsonify({"error": "id is required as a query parameter."}), 400
+
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute("DELETE FROM Users WHERE id = %s", (user_id,))
+        conn.commit()
+        conn.close()
+
+        if cursor.rowcount == 0:
+            return jsonify({"error": "User not found."}), 404
+
+        return jsonify({"message": "User deleted successfully!"}), 200
+
+    except mysql.connector.Error as err:
+        return jsonify({"error": str(err)}), 500
+
+
+# Update user
+# http://127.0.0.1:5000/user/update
+# {
+#   "id": "U004",
+#   "username": "updated_nurse@hospital.com",
+#   "password": "234",
+#   "name": "Nurse Daisy Updated"
+# }
+@app.route("/user/update", methods=["PUT"])
+def update_user():
+    data = request.get_json()
+    user_id = data.get("id")
+    if not user_id:
+        return jsonify({"error": "id is required."}), 400
+
+    fields = []
+    values = []
+    data["password"] = User.hash_password(data["password"])
+
+    for field in ["username", "password", "name"]:
+        if field in data:
+            fields.append(f"{field} = %s")
+            values.append(data[field])
+
+    if not fields:
+        return jsonify({"error": "No fields to update."}), 400
+
+    values.append(user_id)
+
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute(f"""
+            UPDATE Users SET {', '.join(fields)} WHERE id = %s
+        """, tuple(values))
+        conn.commit()
+        conn.close()
+
+        if cursor.rowcount == 0:
+            return jsonify({"error": "User not found."}), 404
+
+        return jsonify({"message": "User updated successfully!"}), 200
+
+    except mysql.connector.Error as err:
+        return jsonify({"error": str(err)}), 500
 
 # Example: http://127.0.0.1:5000/staff/add
 # body

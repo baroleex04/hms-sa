@@ -31,6 +31,13 @@ CREATE TABLE IF NOT EXISTS Staff (
     shift JSON                     -- Comma-separated shift list
 );
 
+CREATE TABLE IF NOT EXISTS Users (
+    id VARCHAR(255) PRIMARY KEY,
+    username VARCHAR(255) UNIQUE NOT NULL,
+    password TEXT NOT NULL,
+    name VARCHAR(255)
+);
+
 -- Insert sample data into Patient table
 INSERT INTO Patient (patient_id, name, date_of_birth, contact_info)
 VALUES 
@@ -50,4 +57,11 @@ VALUES
      '[["Monday", "Day"], ["Wednesday", "Night"], ["Friday", "Day"]]'),
     ('N001', 'Nurse Jane Smith', 'jane.smith@hospital.com', 'Nurse', NULL, NULL, 'ICU', 
      '[["Tuesday", "Night"], ["Thursday", "Day"], ["Saturday", "Night"]]');
+
+-- Sample Users (passwords are plaintext examples for readability)
+INSERT INTO Users (id, username, password, name)
+VALUES 
+    ('U001', 'admin@hospital.com', '$2b$12$Wv3kRQaB9fIjc9Nckl9eXOSkDdYuBf3cKoC38umEpFMUHvZB9QW2y', 'Admin User'),
+    ('U002', 'reception@hospital.com', '$2b$12$dJHJoQnrZGBNtwBTSqxz8euTiGAX6aYwN.qzLplCUoW9cvkT7EWEq', 'Receptionist'),
+    ('U003', 'doctor1@hospital.com', '$2b$12$olB3cKixRnXZpsWq1OCN0eGVwd4vmpxxYoZAH5qDBgL7QqtPMWpL2', 'Dr. A. Patel');
 
