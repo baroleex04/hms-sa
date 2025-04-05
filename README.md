@@ -40,6 +40,16 @@ Then run the container of image database:
 ```
 docker run -d -p 3308:3306 --name mysql-hospital mysql-hospital
 ```
+
+If you have installed a Docker container before then you need to stop container and delete the images before you want to build a new one:
+
+```
+docker stop mysql-hospital
+docker rm mysql-hospital
+docker rmi mysql-hospital
+```
+
+Then you could retrn to the class again.
 --- 
 ## Running backend for testing API
 The backend can be tested by running the following command to change the directory to backend, supposed you are in the hms-sa folder:
