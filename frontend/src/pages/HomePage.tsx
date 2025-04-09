@@ -48,7 +48,7 @@ const HomePage: React.FC = () => {
           <PatientWidget totalPatients={totalPatients} />
 
           {/* Staff Overview Widget */}
-          <StaffOverview />
+          {/* <StaffOverview /> */}
         </div>
       </div>
     </div>
