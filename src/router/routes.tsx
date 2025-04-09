@@ -4,9 +4,12 @@ import AdminPage from "../pages/AdminPage";
 import SignUp from "../components/SignUp";
 import LogIn from "../components/LogIn";
 import Profile from "../components/Profile"; // Import trang hồ sơ
+import StaffManagement from "../components/StaffManagement";
+import PatientManagement from "../components/PatientManagement";
 
 
 import { h, FunctionalComponent, JSX, Fragment } from 'preact';
+
 
 // Private route component for protecting routes requiring authentication
 const PrivateRoute = ({ children }: { children: JSX.Element }) => {
@@ -46,4 +49,20 @@ export const routes: RouteObject[] = [
       //</PrivateRoute>
     ),
   }, 
+  {
+    path: "/staff-management",
+    element: (
+      //<PrivateRoute>
+        <StaffManagement />
+      //</PrivateRoute>
+    ),
+  },
+  {
+    path: "/patient-management",
+    element: (
+      //<PrivateRoute>
+        <PatientManagement />
+      //</PrivateRoute>
+    ),
+  },
 ];

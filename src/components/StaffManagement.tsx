@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Users, Search, Plus, Edit2, Trash2, X } from 'lucide-react';
 
+
 interface Staff {
   id: number;
   name: string;

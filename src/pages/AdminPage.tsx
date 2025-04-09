@@ -22,7 +22,7 @@ const AdminPage: React.FC = () => {
         {/* Widget for Staff Management */}
         <div className="p-4 bg-white shadow-md rounded-lg">
           
-          <Link to="/staff"
+          <Link to="/staff-management"
                   className="block p-6 bg-white rounded-lg shadow-md hover:shadow-lg transition-shadow"
                 >
                   <div className="flex items-center">
@@ -45,7 +45,7 @@ const AdminPage: React.FC = () => {
         {/* Widget for Patient Management */}
         <div className="p-4 bg-white shadow-md rounded-lg">
           
-          <Link to="/patients"
+          <Link to="/patient-management"
                   className="block p-6 bg-white rounded-lg shadow-md hover:shadow-lg transition-shadow"
                 >
                   <div className="flex items-center">
