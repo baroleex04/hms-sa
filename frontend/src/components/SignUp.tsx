@@ -1,8 +1,9 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import axios from "axios";
 import { toast } from "react-toastify";
 import { useMutation } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
+import { v4 as uuidv4 } from "uuid"; // Import UUID to generate unique user IDs
 
 const SignUp = () => {
   const [formData, setFormData] = useState({
@@ -13,11 +14,39 @@ const SignUp = () => {
     password: "",
   });
 
+  // Password validation state
+  const [passwordValidation, setPasswordValidation] = useState({
+    hasMinLength: false,
+    hasLowerCase: false,
+    hasUpperCase: false,
+    hasDigit: false,
+    isValid: false,
+  });
+  const [showPasswordRequirements, setShowPasswordRequirements] = useState(false);
+
   const [showPassword, setShowPassword] = useState(false);
   
+  // Check password on every change
+  useEffect(() => {
+    const password = formData.password;
+    
+    const hasMinLength = password.length >= 8;
+    const hasLowerCase = /[a-z]/.test(password);
+    const hasUpperCase = /[A-Z]/.test(password);
+    const hasDigit = /\d/.test(password);
+    const isValid = hasMinLength && hasLowerCase && hasUpperCase && hasDigit;
+    
+    setPasswordValidation({
+      hasMinLength,
+      hasLowerCase,
+      hasUpperCase,
+      hasDigit,
+      isValid
+    });
+  }, [formData.password]);
+
   const validatePassword = (password: string): boolean => {
-    const regex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)[A-Za-z\d]{8,}$/;
-    return regex.test(password);
+    return passwordValidation.isValid;
   };
 
   const navigate = useNavigate();
@@ -26,8 +55,10 @@ const SignUp = () => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
-  // Hàm gọi API đăng ký
+  // Function to call the API to register a user
   const registerUser = async (formData: { email: string; password: string; firstname: string; lastname: string; address: string }) => {
+    console.log("Attempting to register with password:", formData.password);
+    
     if (!validatePassword(formData.password)) {
       toast.error("Password must be 8+ characters with an uppercase, lowercase, and number.", {
         position: "top-right",
@@ -35,18 +66,60 @@ const SignUp = () => {
       });
       return Promise.reject(new Error("Invalid password format"));
     }
+    
+    // Generate a unique user ID with UUID
+    const userId = `U${uuidv4().substring(0, 6)}`;
+    
+    // Format data for backend API
+    const userData = {
+      id: userId,
+      username: formData.email, // Using email as username
+      password: formData.password,
+      name: `${formData.firstname} ${formData.lastname}`, // Combining first and last name
+    };
+    
+    console.log("Sending user data to API:", { ...userData, password: "***" });
+    
     try {
-      const response = await axios.post("................", formData);
-      return response.data;
+      // Call the backend API to create a user with more detailed error logging
+      const response = await axios.post("http://localhost:5000/user/add", userData, {
+        // Add a longer timeout to give the server more time to respond
+        timeout: 10000
+      });
+      console.log("API response:", response.data);
+      
+      // Return the response data
+      return {
+        ...response.data,
+        email: formData.email,
+        name: userData.name
+      };
     } catch (error: any) {
-      return Promise.reject(error); // 👈 Để useMutation bắt được lỗi từ API
+      console.error("API error details:", {
+        message: error.message,
+        status: error.response?.status,
+        statusText: error.response?.statusText,
+        data: error.response?.data
+      });
+      
+      // Handle specific error cases with more detail
+      if (error.response?.status === 500 && error.response.data?.error?.includes("Duplicate entry")) {
+        return Promise.reject(new Error("Email already exists"));
+      } else if (error.response?.status === 500) {
+        return Promise.reject(new Error(`Server error: ${error.response.data?.error || "Unknown error"}`));
+      } else if (error.message.includes("timeout")) {
+        return Promise.reject(new Error("Connection timeout. Server might be unavailable."));
+      } else if (error.message.includes("Network Error")) {
+        return Promise.reject(new Error("Network error. Check your connection or server status."));
+      } 
+      return Promise.reject(error); // Pass other errors to useMutation
     }
   };
 
-  // useMutation với kiểu dữ liệu chuẩn
-  const { mutate, isPending } = useMutation({
+  // Use the useMutation hook for API calls
+  const { mutate, isPending, error } = useMutation({
     mutationFn: registerUser,
-    onSuccess: () => {
+    onSuccess: (data) => {
       toast.success("Account created successfully!", { autoClose: 1500 });
       setTimeout(() => {
         navigate("/login");
@@ -54,8 +127,18 @@ const SignUp = () => {
     },
     onError: (error: any) => {
       if (error.message === "Invalid password format") {
+        // Already handled in registerUser
+      } else if (error.message === "Email already exists") {
+        toast.error("Email is already in use!");
+      } else if (error.message.includes("Server error")) {
+        toast.error(error.message);
+        console.error("Server error:", error);
+      } else if (error.message.includes("Connection timeout") || error.message.includes("Network error")) {
+        toast.error(error.message);
+        console.error("Connection error:", error);
       } else {
-        toast.error("Email is already in use!"); // Lỗi từ API
+        toast.error(`Registration failed: ${error.message || "Unknown error"}`);
+        console.error("Registration error full details:", error);
       }
     },
   });
@@ -115,13 +198,14 @@ const SignUp = () => {
               className="w-full mb-4 border-b border-gray-400 text-gray-600 text-[16px] outline-none"
             />
 
-            <div className="relative mb-4">
+            <div className="relative mb-1">
               <input
                 type={showPassword ? "text" : "password"}
                 name="password"
                 placeholder="Password"
                 value={formData.password}
                 onChange={handleChange}
+                onFocus={() => setShowPasswordRequirements(true)}
                 className="w-full mb-4 border-b border-gray-400 text-gray-600 text-[16px] outline-none"
               />
               <button
@@ -136,6 +220,27 @@ const SignUp = () => {
                 )}
               </button>
             </div>
+
+            {/* Password requirements checklist */}
+            {showPasswordRequirements && (
+              <div className="mb-4 text-sm text-gray-600">
+                <p className="font-semibold">Password must have:</p>
+                <ul className="pl-5 list-disc">
+                  <li className={passwordValidation.hasMinLength ? "text-green-500" : "text-red-500"}>
+                    Minimum 8 characters
+                  </li>
+                  <li className={passwordValidation.hasLowerCase ? "text-green-500" : "text-red-500"}>
+                    At least one lowercase letter (a-z)
+                  </li>
+                  <li className={passwordValidation.hasUpperCase ? "text-green-500" : "text-red-500"}>
+                    At least one uppercase letter (A-Z)
+                  </li>
+                  <li className={passwordValidation.hasDigit ? "text-green-500" : "text-red-500"}>
+                    At least one number (0-9)
+                  </li>
+                </ul>
+              </div>
+            )}
 
             <button
               type="submit"
