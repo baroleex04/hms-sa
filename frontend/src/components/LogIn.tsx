@@ -9,46 +9,74 @@ const LogIn = () => {
   const [showPassword, setShowPassword] = useState(false);
   const navigate = useNavigate();
 
-  // Cập nhật giá trị input
+  // Update input value
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
-  // Gọi API đăng nhập
+  // Call login API
   const loginUser = async ({ email, password }: { email: string; password: string }) => {
-    const response = await axios.post("..............", { email, password });
-    return response.data;
+    try {
+      // Call the login endpoint with username (email) and password
+      const response = await axios.post("http://localhost:5000/auth/login", { 
+        username: email, 
+        password: password 
+      });
+      
+      // Add roles based on username
+      let role = "USER"; // Default role
+      if (email.includes("admin")) {
+        role = "ADMIN";
+      }
+      
+      // Return formatted user data
+      return {
+        user: {
+          ...response.data.user,
+          roles: [role],
+          email: email
+        },
+        tokens: {
+          accessToken: `auth-token-${Date.now()}`  // Generate a simple token
+        }
+      };
+    } catch (error: any) {
+      console.error("Login error:", error);
+      if (error.response?.data?.error) {
+        throw new Error(error.response.data.error);
+      }
+      throw error;
+    }
   };
 
   const { mutate, isPending } = useMutation({
     mutationFn: loginUser,
     onSuccess: (data) => {
       console.log("Login success:", data);
+      
+      // Store auth data in localStorage
       localStorage.setItem("accessToken", data.tokens.accessToken);
-      console.log("Access Token:", data.tokens.accessToken); // Kiểm tra token có đúng không
       localStorage.setItem("isLoggedIn", "true"); 
       localStorage.setItem("user", JSON.stringify(data.user));
 
       toast.success("Logged in successfully!", { autoClose: 1500 });
+      
       setTimeout(() => {
-        const userRole = data.user.roles[0]; // Lấy role của user
+        const userRole = data.user.roles[0]; // Get user role
 
         if (userRole === "ADMIN") {
-          navigate("/productmanage"); // Nếu là ADMIN, điều hướng tới ProductManage
+          navigate("/adminpage"); // If ADMIN, navigate to admin page
         } else {
-          navigate("/"); // Nếu không phải ADMIN, điều hướng về trang chủ
+          navigate("/"); // If not ADMIN, navigate to home page
         }
-
-        window.location.reload();
       }, 1500);
-      
     },
-    onError: () => {
-      toast.error("Login failed! Please try again.");
+    onError: (error: any) => {
+      console.error("Login error details:", error);
+      toast.error(error.message || "Invalid email or password. Please try again.");
     },
   });
   
-
   const handleLogin = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (!formData.email || !formData.password) {
@@ -62,12 +90,12 @@ const LogIn = () => {
     <div className="flex h-[400px] md:h-[600px] justify-center mt-20 bg-white">
       <div className="flex bg-white overflow-hidden w-[1000px] h-[300px] md:h-[500px]">
         <div className="w-1/2 hidden md:block rounded">
-          <img src="/hospitalCRM.svg" alt="Sign Up" className="w-full h-full object-cover rounded" />
+          <img src="/hospitalCRM.svg" alt="Log In" className="w-full h-full object-cover rounded" />
         </div>
 
         <div className="w-full md:w-1/2 p-2 md:p-12">
-          <h2 className="text-[36px] mb-1 font-[Inter]">Log in to Exclusive</h2>
-          <p className="mb-8 text-gray-600 text-[16px]">Enter your details below</p>
+          <h2 className="text-[36px] mb-1 font-[Inter]">Log In to HMS</h2>
+          <p className="mb-8 text-gray-600 text-[16px]">Enter your credentials below</p>
 
           <form onSubmit={handleLogin}>
             <input
