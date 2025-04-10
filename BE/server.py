@@ -2,8 +2,8 @@ from flask import Flask, jsonify, request
 from flask_cors import CORS
 from werkzeug.security import check_password_hash
 from werkzeug.security import generate_password_hash
-from modules.patient import Patient, MedicalHistory, get_db_connection
-from modules.staff import Staff, StaffRole, Ward
+from modules.patient import Patient, MedicalHistory, get_db_connection, PatientGender
+from modules.staff import Staff, StaffRole, Ward, StaffStatus
 from modules.user import User
 import mysql.connector
 import uuid, json
@@ -362,6 +362,7 @@ def get_all_staff():
             name=record["name"],
             contact_info=record["contact_info"],
             role=StaffRole(record["role"]),
+            status=StaffStatus(record["status"]),
             specialization=record.get("specialization"),
             department=record.get("department"),
             ward=Ward(record["ward"]) if record.get("ward") else None,
@@ -387,6 +388,12 @@ def update_staff_info():
     staff_id = data.get("staff_id")
     name = data.get("name")
     contact_info = data.get("contact_info")
+    role = data.get("role")
+    status = data.get("status")
+    specialization = data.get("specialization")
+    department = data.get("department")
+    shift = data.get("shift")
+    ward = data.get("ward")
 
     if not staff_id:
         return jsonify({"error": "staff_id is required."}), 400
@@ -403,6 +410,7 @@ def update_staff_info():
         name=staff_data["name"],
         contact_info=staff_data["contact_info"],
         role=StaffRole(staff_data["role"]),
+        status=StaffStatus(staff_data["status"]),
         specialization=staff_data.get("specialization"),
         department=staff_data.get("department"),
         ward=Ward(staff_data["ward"]) if staff_data.get("ward") else None,
@@ -410,8 +418,10 @@ def update_staff_info():
     )
 
     # Perform update
-    staff.update_info(name=name, contact_info=contact_info)
-
+    staff.update_info(name=name, contact_info=contact_info, role=role, status=status, specialization=specialization, department=department, ward=ward)
+    if shift != "not changed":
+        if shift:
+            staff.update_shift(new_shift=shift)
     return jsonify({"message": "Staff info updated successfully!"}), 200
 
 # Endpoint to get a specific patient's details by patient_id or name
@@ -465,6 +475,7 @@ def get_all_patients():
         patient = Patient(
             patient_id=patient_data["patient_id"],
             name=patient_data["name"],
+            gender=PatientGender(patient_data["gender"]),
             date_of_birth=str(patient_data["date_of_birth"]),
             contact_info=patient_data["contact_info"],
             medical_history=medical_history
@@ -491,6 +502,8 @@ def update_patient_info():
     patient_id = data.get("patient_id")
     name = data.get("name")
     contact_info = data.get("contact_info")
+    gender = data.get("gender")
+    date_of_birth = data.get("date_of_birth")
 
     if not patient_id:
         return jsonify({"error": "patient_id is required."}), 400
@@ -502,9 +515,9 @@ def update_patient_info():
         return jsonify({"error": patient}), 404
 
     # Update patient info
-    patient = Patient(patient_id=patient_id, name=patient["name"], contact_info=patient["contact_info"], date_of_birth=patient["date_of_birth"], medical_history=patient["medical_history"])
+    patient = Patient(patient_id=patient_id, name=patient["name"], contact_info=patient["contact_info"], gender=patient["gender"], date_of_birth=patient["date_of_birth"], medical_history=patient["medical_history"])
 
-    patient.update_patient_info(name=name, contact_info=contact_info)
+    patient.update_patient_info(name=name, contact_info=contact_info, gender=gender, date_of_birth=date_of_birth)
 
     return jsonify({"message": "Patient info updated successfully!"})
 
@@ -611,8 +624,8 @@ def add_patient():
         cursor = conn.cursor()
 
         # Insert patient information
-        cursor.execute("INSERT INTO Patient (patient_id, name, date_of_birth, contact_info) VALUES (%s, %s, %s, %s)",
-                       (patient_id, data["name"], data["date_of_birth"], data["contact_info"]))
+        cursor.execute("INSERT INTO Patient (patient_id, name, date_of_birth, contact_info, gender) VALUES (%s, %s, %s, %s, %s)",
+                       (patient_id, data["name"], data["date_of_birth"], data["contact_info"], data["gender"]))
         
         # Insert medical history information with the generated history_id
         cursor.execute("INSERT INTO MedicalHistory (history_id, patient_id, `condition`, allergies) VALUES (%s, %s, %s, %s)",

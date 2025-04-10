@@ -44,7 +44,7 @@ const Header: React.FC = () => {
         <h1 className="text-[24px] font-bold">HMS</h1>
 
         {/* Menu items */}
-        <div className="text-[16px] lg:space-x-12 space-x-4 ">
+        <div className="text-[16px] space-x-4 sm:space-x-8 md:space-x-12  ">
           <a
             href={isLoggedIn ? "/adminpage" : "/"}
             className="hover:border-b-2 hover:border-black"

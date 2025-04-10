@@ -156,8 +156,8 @@ const SignUp = () => {
   };
 
   return (
-    <div className="flex h-[500px] md:h-[600px] justify-center mt-10 md:mt-20 bg-white">
-      <div className="flex bg-white overflow-hidden w-[1000px] h-[500px]">
+    <div className="flex h-full md:h-full mb-16 justify-center mt-10 md:mt-20 bg-white">
+      <div className="flex bg-white overflow-hidden w-[1000px]">
         <div className="w-1/2 hidden md:block rounded">
           <img src="/hospitalCRM.svg" alt="Sign Up" className="w-full h-full object-cover rounded" />
         </div>
@@ -257,6 +257,7 @@ const SignUp = () => {
               Log in
             </a>
           </p>
+         
         </div>
       </div>
     </div>

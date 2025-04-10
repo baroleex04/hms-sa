@@ -1,60 +1,188 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { Link } from "react-router-dom";
 import { UserPlus, Search, Plus, Edit2, Trash2, FileText, X } from 'lucide-react';
 
-interface Patient {
-  id: number;
-  name: string;
-  age: number;
-  gender: string;
+interface MedicalHistory {
+  history_id: string;
+  patient_id: string;
   condition: string;
-  status: 'admitted' | 'discharged' | 'pending';
-  lastVisit: string;
+  allergies: string[];
+}
+
+interface Patient {
+  patient_id: string;
+  name: string;
+  date_of_birth: string;
+  gender: string;
+  contact_info: string;
+  medical_history: MedicalHistory;
 }
 
 interface PatientFormData {
+  patient_id: string;
   name: string;
-  age: number;
+  date_of_birth: string;
   gender: string;
+  contact_info: string;
   condition: string;
-  status: 'admitted' | 'discharged' | 'pending';
-  lastVisit: string;
+  allergies: string;
 }
 
-const initialPatients: Patient[] = [
-  { id: 1, name: 'Alice Brown', age: 45, gender: 'Female', condition: 'Hypertension', status: 'admitted', lastVisit: '2024-03-15' },
-  { id: 2, name: 'Bob Wilson', age: 32, gender: 'Male', condition: 'Diabetes', status: 'discharged', lastVisit: '2024-03-10' },
-  { id: 3, name: 'Carol Smith', age: 28, gender: 'Female', condition: 'Pregnancy', status: 'pending', lastVisit: '2024-03-14' },
-];
-
-export default function PatientManagement() {
-  const [patients, setPatients] = useState<Patient[]>(initialPatients);
+const PatientManagement: React.FC = () => {
+  const [patients, setPatients] = useState<Patient[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [editingPatient, setEditingPatient] = useState<Patient | null>(null);
   const [formData, setFormData] = useState<PatientFormData>({
+    patient_id: '',
     name: '',
-    age: 0,
+    date_of_birth: '',
     gender: 'Male',
+    contact_info: '',
     condition: '',
-    status: 'pending',
-    lastVisit: new Date().toISOString().split('T')[0]
+    allergies: '',
   });
+  const [editingPatient, setEditingPatient] = useState<Patient | null>(null);
+  const [modalOpen, setModalOpen] = useState(false);
+
+  useEffect(() => {
+    fetchPatients();
+  }, []);
+
+  const fetchPatients = async () => {
+    try {
+      const res = await fetch('http://127.0.0.1:5000/patients');
+      const data = await res.json();
+      setPatients(data);
+    } catch (err) {
+      console.error('Failed to fetch patients:', err);
+    }
+  };
 
   const filteredPatients = patients.filter(patient =>
     patient.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    patient.condition.toLowerCase().includes(searchTerm.toLowerCase())
+    patient.medical_history.condition.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    patient.patient_id.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'admitted':
-        return 'bg-blue-100 text-blue-800';
-      case 'discharged':
-        return 'bg-green-100 text-green-800';
-      case 'pending':
-        return 'bg-yellow-100 text-yellow-800';
-      default:
-        return 'bg-gray-100 text-gray-800';
+  const calculateAge = (dateOfBirth: string) => {
+    const dob = new Date(dateOfBirth);
+    const diff = Date.now() - dob.getTime();
+    const ageDate = new Date(diff);
+    return Math.abs(ageDate.getUTCFullYear() - 1970);
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const isEdit = !!editingPatient;
+    const allergiesArray = formData.allergies
+    .split(',')
+    .map(item => item.trim())
+    .filter(item => item);
+
+    let patientData: any = { patient_id: formData.patient_id };
+    let endpoint = '';
+    let method = isEdit ? 'PUT' : 'POST';
+    if (!isEdit) {
+      // Add new patient
+      endpoint = 'http://127.0.0.1:5000/patient/add';
+      patientData = {
+        ...formData,
+        allergies: allergiesArray,
+      };
+
+      try {
+        await fetch(endpoint, {
+          method,
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(patientData),
+        });
+    
+        console.log('Submitted patient data:', patientData);
+        await fetchPatients();
+        handleCloseModal();
+      } catch (err) {
+        console.error('Error submitting patient:', err);
+      }
+    } else {
+      // Determine what is being updated
+      const updatingConditionOnly = formData.condition;
+  
+      const updatingAllergiesOnly = allergiesArray.length > 0;
+  
+      if (updatingConditionOnly) {
+        endpoint = 'http://127.0.0.1:5000/patient/update_condition';
+        patientData = {
+          patient_id: formData.patient_id,
+          condition: formData.condition,
+        };
+
+        try {
+          await fetch(endpoint, {
+            method,
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(patientData),
+          });
+      
+          console.log('Submitted patient data:', patientData);
+          await fetchPatients();
+          handleCloseModal();
+        } catch (err) {
+          console.error('Error submitting patient:', err);
+        }
+      }
+      if (updatingAllergiesOnly) {
+        endpoint = 'http://127.0.0.1:5000/patient/update_allergies';
+        patientData = {
+          patient_id: formData.patient_id,
+          new_allergies: allergiesArray,
+        };
+        try {
+          await fetch(endpoint, {
+            method,
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(patientData),
+          });
+      
+          console.log('Submitted patient data:', patientData);
+          await fetchPatients();
+          handleCloseModal();
+        } catch (err) {
+          console.error('Error submitting patient:', err);
+        }
+      } 
+        // Full info update
+      endpoint = 'http://127.0.0.1:5000/patient/update_info';
+      patientData = {
+        ...formData,
+        allergies: allergiesArray,
+      };
+      try {
+        await fetch(endpoint, {
+          method,
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(patientData),
+        });
+    
+        console.log('Submitted patient data:', patientData);
+        await fetchPatients();
+        handleCloseModal();
+      } catch (err) {
+        console.error('Error submitting patient:', err);
+      }
+      
+    } 
+   
+  };
+
+  const handleDelete = async (patient_id: string) => {
+    if (confirm('Are you sure you want to delete this patient?')) {
+      try {
+        await fetch(`http://127.0.0.1:5000/patient/delete?patient_id=${patient_id}`, {
+          method: 'DELETE',
+        });
+        await fetchPatients();
+      } catch (err) {
+        console.error('Error deleting patient:', err);
+      }
     }
   };
 
@@ -62,57 +190,66 @@ export default function PatientManagement() {
     if (patient) {
       setEditingPatient(patient);
       setFormData({
+        patient_id: patient.patient_id,
         name: patient.name,
-        age: patient.age,
+        date_of_birth: patient.date_of_birth,
         gender: patient.gender,
-        condition: patient.condition,
-        status: patient.status,
-        lastVisit: patient.lastVisit
+        contact_info: patient.contact_info,
+        condition: patient.medical_history?.condition,
+        allergies: patient.medical_history.allergies.join(', ')
       });
     } else {
+      // Generate new patient ID
+      const lastId = patients.length > 0 
+        ? parseInt(patients[patients.length - 1].patient_id.substring(1)) 
+        : 0;
+      const newId = `P${(lastId + 1).toString().padStart(3, '0')}`;
+      
       setEditingPatient(null);
       setFormData({
+        patient_id: newId,
         name: '',
-        age: 0,
+        date_of_birth: '',
         gender: 'Male',
+        contact_info: '',
         condition: '',
-        status: 'pending',
-        lastVisit: new Date().toISOString().split('T')[0]
+        allergies: ''
       });
     }
-    setIsModalOpen(true);
+    setModalOpen(true);
   };
 
   const handleCloseModal = () => {
-    setIsModalOpen(false);
+    setModalOpen(false);
     setEditingPatient(null);
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (editingPatient) {
-      setPatients(patients.map(patient =>
-        patient.id === editingPatient.id
-          ? { ...patient, ...formData }
-          : patient
-      ));
-    } else {
-      const newPatient = {
-        id: Math.max(...patients.map(p => p.id)) + 1,
-        ...formData
-      };
-      setPatients([...patients, newPatient]);
-    }
-    handleCloseModal();
-  };
-
-  const handleDelete = (id: number) => {
-    if (confirm('Are you sure you want to delete this patient?')) {
-      setPatients(patients.filter(patient => patient.id !== id));
-    }
-  };
-
   return (
+    <div className="space-y-6 mb-8">
+    {/* Back link outside the main box */}
+    <div className="pt-8">
+      <div className="px-6">
+        <Link 
+          to="/adminpage" 
+          className="flex items-center text-gray-600 hover:text-gray-900"
+        >
+          <svg 
+            xmlns="http://www.w3.org/2000/svg" 
+            className="h-5 w-5 mr-2" 
+            viewBox="0 0 20 20" 
+            fill="currentColor"
+          >
+            <path 
+              fillRule="evenodd" 
+              d="M9.707 16.707a1 1 0 01-1.414 0l-6-6a1 1 0 010-1.414l6-6a1 1 0 011.414 1.414L5.414 9H17a1 1 0 110 2H5.414l4.293 4.293a1 1 0 010 1.414z" 
+              clipRule="evenodd" 
+            />
+          </svg>
+          Back to Dashboard
+        </Link>
+      </div>
+    </div>
+    
     <div className="bg-white rounded-lg shadow">
       <div className="px-6 py-4 border-b border-gray-200">
         <div className="flex items-center justify-between">
@@ -148,38 +285,39 @@ export default function PatientManagement() {
           <table className="min-w-full divide-y divide-gray-200">
             <thead>
               <tr>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ID</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Patient</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Age/Gender</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Contact</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Condition</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Last Visit</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Allergies</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
               {filteredPatients.map((patient) => (
-                <tr key={patient.id}>
+                <tr key={patient.patient_id}>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <div className="text-sm font-medium text-gray-900">{patient.patient_id}</div>
+                  </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="text-sm font-medium text-gray-900">{patient.name}</div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm text-gray-500">{patient.age} / {patient.gender}</div>
+                    <div className="text-sm text-gray-500">{calculateAge(patient.date_of_birth)} / {patient.gender}</div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm text-gray-500">{patient.condition}</div>
+                    <div className="text-sm text-gray-500">{patient.contact_info}</div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusColor(patient.status)}`}>
-                      {patient.status}
-                    </span>
+                    <div className="text-sm text-gray-500">{patient.medical_history.condition}</div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm text-gray-500">{patient.lastVisit}</div>
+                    <div className="text-sm text-gray-500">
+                    {(patient.medical_history.allergies || []).join(', ')}
+                    </div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                    <button className="text-blue-600 hover:text-blue-900 mr-3">
-                      <FileText className="h-5 w-5" />
-                    </button>
                     <button 
                       onClick={() => handleOpenModal(patient)}
                       className="text-green-600 hover:text-green-900 mr-3"
@@ -187,7 +325,7 @@ export default function PatientManagement() {
                       <Edit2 className="h-5 w-5" />
                     </button>
                     <button 
-                      onClick={() => handleDelete(patient.id)}
+                      onClick={() => handleDelete(patient.patient_id)}
                       className="text-red-600 hover:text-red-900"
                     >
                       <Trash2 className="h-5 w-5" />
@@ -201,7 +339,7 @@ export default function PatientManagement() {
       </div>
 
       {/* Modal */}
-      {isModalOpen && (
+      {modalOpen && (
         <div className="fixed inset-0 bg-gray-500 bg-opacity-75 flex items-center justify-center">
           <div className="bg-white rounded-lg p-6 max-w-md w-full">
             <div className="flex justify-between items-center mb-4">
@@ -215,6 +353,16 @@ export default function PatientManagement() {
             <form onSubmit={handleSubmit}>
               <div className="space-y-4">
                 <div>
+                  <label className="block text-sm font-medium text-gray-700">Patient ID</label>
+                  <input
+                    type="text"
+                    required
+                    value={formData.patient_id}
+                    readOnly
+                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-green-500 focus:ring-green-500 bg-gray-200"
+                  />
+                </div>
+                <div>
                   <label className="block text-sm font-medium text-gray-700">Name</label>
                   <input
                     type="text"
@@ -225,13 +373,12 @@ export default function PatientManagement() {
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700">Age</label>
+                  <label className="block text-sm font-medium text-gray-700">Date of Birth</label>
                   <input
-                    type="number"
+                    type="date"
                     required
-                    min="0"
-                    value={formData.age}
-                    onChange={(e) => setFormData({ ...formData, age: parseInt(e.target.value) })}
+                    value={formData.date_of_birth}
+                    onChange={(e) => setFormData({ ...formData, date_of_birth: e.target.value })}
                     className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-green-500 focus:ring-green-500"
                   />
                 </div>
@@ -244,8 +391,18 @@ export default function PatientManagement() {
                   >
                     <option value="Male">Male</option>
                     <option value="Female">Female</option>
-                    <option value="Other">Other</option>
+                    <option value="OTHER">Other</option>
                   </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">Contact Info</label>
+                  <input
+                    type="text"
+                    required
+                    value={formData.contact_info}
+                    onChange={(e) => setFormData({ ...formData, contact_info: e.target.value })}
+                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-green-500 focus:ring-green-500"
+                  />
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700">Condition</label>
@@ -258,25 +415,13 @@ export default function PatientManagement() {
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700">Status</label>
-                  <select
-                    value={formData.status}
-                    onChange={(e) => setFormData({ ...formData, status: e.target.value as 'admitted' | 'discharged' | 'pending' })}
-                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-green-500 focus:ring-green-500"
-                  >
-                    <option value="admitted">Admitted</option>
-                    <option value="discharged">Discharged</option>
-                    <option value="pending">Pending</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">Last Visit</label>
+                  <label className="block text-sm font-medium text-gray-700">Allergies (comma separated)</label>
                   <input
-                    type="date"
-                    required
-                    value={formData.lastVisit}
-                    onChange={(e) => setFormData({ ...formData, lastVisit: e.target.value })}
+                    type="text"
+                    value={formData.allergies}
+                    onChange={(e) => setFormData({ ...formData, allergies: e.target.value })}
                     className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-green-500 focus:ring-green-500"
+                    placeholder="Peanuts, Dust, Penicillin"
                   />
                 </div>
               </div>
@@ -300,5 +445,8 @@ export default function PatientManagement() {
         </div>
       )}
     </div>
-  );
-}
+  </div>
+);
+};
+
+export default PatientManagement;
