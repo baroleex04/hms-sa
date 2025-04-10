@@ -4,7 +4,6 @@ const Header: React.FC = () => {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
-  const dropdownRef = useRef<HTMLDivElement | null>(null);
   let timeoutId: NodeJS.Timeout;
 
   const handleLogout = () => {
@@ -45,31 +44,25 @@ const Header: React.FC = () => {
         <h1 className="text-[24px] font-bold">HMS</h1>
 
         {/* Menu items */}
-        <div className="text-[13px] sm:text-[16px] lg:space-x-12 space-x-4 ">
+        <div className="text-[16px] lg:space-x-12 space-x-4 ">
           <a
-            href={isAdmin ? "/dashboard" : "/"}
+            href={isLoggedIn ? "/adminpage" : "/"}
             className="hover:border-b-2 hover:border-black"
           >
-            {isAdmin ? "Dashboard" : "Home"}
+            {isLoggedIn ? "Dashboard" : "Home"}
           </a>
-          {isAdmin && (
-            <a href="/patients" className="hover:border-b-2 hover:border-black">Patients</a>
-          )}          
-          {isAdmin && (
-            <a href="/appointments" className="hover:border-b-2 hover:border-black">Appointments</a>
-          )}
-          {isAdmin && (
-            <a href="/staff" className="hover:border-b-2 hover:border-black">Staff</a>
-          )}
-          {!isAdmin && (
-            <a href="#" className="hover:border-b-2 hover:border-black">About Us</a>
-          )}
-          {!isAdmin && (
+          {isLoggedIn && (
+            <a href="/patient-management" className="hover:border-b-2 hover:border-black">Patients</a>
+          )}         
+          {isLoggedIn && (
+            <a href="/staff-management" className="hover:border-b-2 hover:border-black">Staff</a>
+          )}   
+          {isLoggedIn && (
+            <a href="/profile" className="hover:border-b-2 hover:border-black">Account</a>
+          )}         
+          {!isLoggedIn && (
             <a href="#" className="hover:border-b-2 hover:border-black">Contact</a>
-          )}
-          {isLoggedIn && !isAdmin && (
-            <a href="/appointments" className="hover:border-b-2 hover:border-black">My Appointments</a>
-          )}
+          )}        
           {!isLoggedIn && (
             <a href="/login" className="hover:border-b-2 hover:border-black">Login</a>
           )}
@@ -103,13 +96,7 @@ const Header: React.FC = () => {
               >
                 <a href="/profile" className="block px-4 py-2 hover:bg-gray-100">
                   My Profile
-                </a>
-                <a href="/appointments" className="block px-4 py-2 hover:bg-gray-100">
-                  My Appointments
-                </a>
-                <a href="#" className="block px-4 py-2 hover:bg-gray-100">
-                  My Records
-                </a>
+                </a>               
                 <a href="/login" onClick={handleLogout} className="block px-4 py-2 hover:bg-gray-100">
                   Log Out
                 </a>

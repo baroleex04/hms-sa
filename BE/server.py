@@ -1,4 +1,7 @@
 from flask import Flask, jsonify, request
+from flask_cors import CORS
+from werkzeug.security import check_password_hash
+from werkzeug.security import generate_password_hash
 from modules.patient import Patient, MedicalHistory, get_db_connection
 from modules.staff import Staff, StaffRole, Ward
 from modules.user import User
@@ -6,7 +9,8 @@ import mysql.connector
 import uuid, json
 
 app = Flask(__name__)
-
+# Enable CORS for all routes and all origins
+CORS(app, resources={r"/*": {"origins": "*"}})
 # Get user by username
 # http://127.0.0.1:5000/user?username=admin@hospital.com
 @app.route("/user", methods=["GET"])
@@ -69,7 +73,7 @@ def add_user():
     if missing:
         return jsonify({"error": f"Missing fields: {', '.join(missing)}"}), 400
     
-    hashed_password = User.hash_password(data["password"])
+    hashed_password = generate_password_hash(data["password"])
 
     try:
         conn = get_db_connection()
@@ -91,6 +95,42 @@ def add_user():
     except mysql.connector.Error as err:
         return jsonify({"error": str(err)}), 500
 
+# Login endpoint
+# Example: http://127.0.0.1:5000/login
+# Body:
+# {
+#   "username": "admin@hospital.com",
+#   "password": "12345"
+# }
+@app.route("/login", methods=["POST"])
+def login():
+    data = request.get_json()
+    username = data.get("username")
+    password = data.get("password")
+
+    if not username or not password:
+        return jsonify({"error": "Username and password are required."}), 400
+
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor(dictionary=True)
+        cursor.execute("SELECT id, username, password, name FROM Users WHERE username = %s", (username,))
+        user = cursor.fetchone()
+        conn.close()
+
+        if not user:
+            return jsonify({"error": "Invalid username or password."}), 401
+
+        # Check hashed password
+        if not check_password_hash(user["password"], password):
+            return jsonify({"error": "Invalid username or password."}), 401
+
+        # Remove password before sending response
+        user.pop("password")
+        return jsonify({"message": "Login successful!", "user": user}), 200
+
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 # Delete user
 # http://127.0.0.1:5000/user/delete?id=U004
@@ -128,39 +168,71 @@ def delete_user():
 def update_user():
     data = request.get_json()
     user_id = data.get("id")
+
     if not user_id:
-        return jsonify({"error": "id is required."}), 400
+        return jsonify({"error": "User ID is required."}), 400
+
+    # Kết nối đến DB
+    conn = get_db_connection()
+    cursor = conn.cursor()
 
     fields = []
     values = []
-    data["password"] = User.hash_password(data["password"])
-
-    for field in ["username", "password", "name"]:
-        if field in data:
-            fields.append(f"{field} = %s")
-            values.append(data[field])
-
-    if not fields:
-        return jsonify({"error": "No fields to update."}), 400
-
-    values.append(user_id)
 
     try:
-        conn = get_db_connection()
-        cursor = conn.cursor()
-        cursor.execute(f"""
-            UPDATE Users SET {', '.join(fields)} WHERE id = %s
-        """, tuple(values))
+        # Nếu muốn cập nhật mật khẩu, bắt buộc phải có old_password
+        if "password" in data and data["password"]:
+            old_password = data.get("old_password")
+
+            if not old_password:
+                return jsonify({"error": "Old password is required to update password."}), 400
+
+            # Lấy password hash từ DB để so sánh
+            cursor.execute("SELECT password FROM Users WHERE id = %s", (user_id,))
+            result = cursor.fetchone()
+
+            if not result:
+                return jsonify({"error": "User not found."}), 404
+
+            stored_password_hash = result[0]
+
+            if not check_password_hash(stored_password_hash, old_password):
+                return jsonify({"error": "Old password is incorrect."}), 403
+
+            # Nếu đúng thì hash password mới và thêm vào danh sách cập nhật
+            new_password = data["password"]
+            hashed_password = generate_password_hash(new_password)
+            fields.append("password = %s")
+            values.append(hashed_password)
+
+        # Cập nhật các trường khác
+        for field in ["username", "name"]:
+            if field in data and data[field]:
+                fields.append(f"{field} = %s")
+                values.append(data[field])
+
+        if not fields:
+            return jsonify({"error": "No fields to update."}), 400
+
+        values.append(user_id)
+
+        cursor.execute(
+            f"UPDATE Users SET {', '.join(fields)} WHERE id = %s",
+            tuple(values)
+        )
         conn.commit()
-        conn.close()
 
         if cursor.rowcount == 0:
-            return jsonify({"error": "User not found."}), 404
+            return jsonify({"error": "User not found or no changes made."}), 404
 
         return jsonify({"message": "User updated successfully!"}), 200
 
     except mysql.connector.Error as err:
         return jsonify({"error": str(err)}), 500
+
+    finally:
+        cursor.close()
+        conn.close()
 
 # Example: http://127.0.0.1:5000/staff/add
 # body

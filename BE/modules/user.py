@@ -1,6 +1,7 @@
 import bcrypt
 from db_connection.db import get_db_connection
 from typing import Optional
+from werkzeug.security import generate_password_hash, check_password_hash
 
 class User:
     def __init__(self, user_id: str, username: str, password: str, name: str):
@@ -33,6 +34,34 @@ class User:
             return f"Error adding user: {e}"
         finally:
             conn.close()
+
+    @classmethod
+    def login(cls, username: str, password: str) -> Optional["User"]:
+        """
+        Authenticate a user by username and password.
+
+        Returns:
+            User object if authentication is successful, otherwise None.
+        """
+        conn = get_db_connection()
+        cursor = conn.cursor()
+
+        try:
+            cursor.execute("SELECT id, username, password, name FROM Users WHERE username = %s", (username,))
+            user_data = cursor.fetchone()
+
+            if user_data:
+                user_id, db_username, db_password, name = user_data
+                if bcrypt.checkpw(password.encode('utf-8'), db_password.encode('utf-8')):
+                    return cls(user_id=user_id, username=db_username, password=db_password, name=name)
+
+            return None  # Login failed
+        except Exception as e:
+            print(f"Login error: {e}")
+            return None
+        finally:
+            conn.close()
+
 
     @classmethod
     def delete_user(cls, user_id: str):

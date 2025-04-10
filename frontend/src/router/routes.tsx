@@ -4,6 +4,9 @@ import AdminPage from "../pages/AdminPage";
 import SignUp from "../components/SignUp";
 import LogIn from "../components/LogIn";
 import Profile from "../components/Profile"; // Import trang hồ sơ
+import StaffManagement from "../components/Admin/StaffManagement";
+import PatientManagement from "../components/Admin/PatientManagement";
+
 
 // Private route component for protecting routes requiring authentication
 const PrivateRoute = ({ children }: { children: JSX.Element }) => {
@@ -40,6 +43,22 @@ export const routes: RouteObject[] = [
     element: (
       <PrivateRoute>
         <AdminPage />
+      </PrivateRoute>
+    ),
+  }, 
+  {
+    path: "/staff-management", // Route for managing products
+    element: (
+      <PrivateRoute>
+        <StaffManagement />
+      </PrivateRoute>
+    ),
+  }, 
+  {
+    path: "/patient-management", // Route for managing products
+    element: (
+      <PrivateRoute>
+        <PatientManagement />
       </PrivateRoute>
     ),
   }, 
