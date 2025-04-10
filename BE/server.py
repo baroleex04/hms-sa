@@ -2,10 +2,60 @@ from flask import Flask, jsonify, request
 from modules.patient import Patient, MedicalHistory, get_db_connection
 from modules.staff import Staff, StaffRole, Ward
 from modules.user import User
+from flask_cors import CORS
 import mysql.connector
 import uuid, json
+import bcrypt  # Import bcrypt for password verification
 
 app = Flask(__name__)
+# Enable CORS for all routes and all origins
+CORS(app, resources={r"/*": {"origins": "*"}})
+
+# Login endpoint
+# http://127.0.0.1:5000/auth/login
+# body
+# {
+#   "username": "admin@hospital.com",
+#   "password": "admin123"
+# }
+@app.route("/auth/login", methods=["POST"])
+def login():
+    data = request.get_json()
+    
+    if not data or "username" not in data or "password" not in data:
+        return jsonify({"error": "Username and password are required"}), 400
+    
+    username = data["username"]
+    password = data["password"]
+    
+    try:
+        # Get user from database
+        conn = get_db_connection()
+        cursor = conn.cursor(dictionary=True)
+        cursor.execute("SELECT id, username, password, name FROM Users WHERE username = %s", (username,))
+        user = cursor.fetchone()
+        conn.close()
+        
+        if not user:
+            return jsonify({"error": "Invalid username or password"}), 401
+        
+        # Check password
+        stored_hash = user["password"]
+        if bcrypt.checkpw(password.encode('utf-8'), stored_hash.encode('utf-8')):
+            # Password matches, return success
+            return jsonify({
+                "message": "Login successful",
+                "user": {
+                    "id": user["id"],
+                    "username": user["username"],
+                    "name": user["name"]
+                }
+            }), 200
+        else:
+            return jsonify({"error": "Invalid username or password"}), 401
+    
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 # Get user by username
 # http://127.0.0.1:5000/user?username=admin@hospital.com
