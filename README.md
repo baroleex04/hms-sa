@@ -20,10 +20,12 @@ If you don't have Docker then install it by this link:
 https://www.docker.com/get-started/
 ```
 ---
-## Running up database
+## For testing database and backend before running all services
 
+Notice that this is only for testing each service, we need to stop all the containers and delete related containers and images before running up application to avoid conflicting.
 This repository has folder database for initializing and maintaining database. 
-Please change the directory to database:
+
+### To run up the database:
 
 ```
 cd database
@@ -33,31 +35,33 @@ Then run the follow command to build the database at local:
 
 ```
 docker build -t mysql-hospital .
-docker build -t be-hospital .
 ```
 
 Then run the container of image database:
-
+```
+docker run -d -p 3308:3306 --name mysql-hospital mysql-hospital
 ```
 
-```
-
+To stop the container, remove the container and remove related image: 
 If you have installed a Docker container before then you need to stop container and delete the images before you want to build a new one:
-
 ```
 docker stop mysql-hospital
 docker rm mysql-hospital
 docker rmi mysql-hospital
 ```
 
-Then you could retrn to the class again.
+Then you could retrn to the main folder again:
+```
+cd ..
+```
+
 --- 
-## Running backend for testing API
+### Running backend for testing API
 The backend can be tested by running the following command to change the directory to backend, supposed you are in the hms-sa folder:
 ```
 cd BE
-python -m venv .venv 
-source ./.venv/bin/activate
+python3 -m venv .venv 
+source .venv/bin/activate
 pip install -r requirements.txt
 ```
 Then run the below to open Flask server:
