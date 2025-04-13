@@ -276,6 +276,13 @@ def add_staff():
         conn = get_db_connection()
         cursor = conn.cursor()
 
+        # Check for duplicate staff_id
+        cursor.execute("SELECT 1 FROM Staff WHERE staff_id = %s", (staff_id,))
+        if cursor.fetchone():
+            conn.close()
+            return jsonify({"error": f"Staff ID '{staff_id}' already exists."}), 409
+
+        # Insert new staff
         cursor.execute("""
             INSERT INTO Staff (
                 staff_id, name, contact_info, role, specialization, department, ward, shift
