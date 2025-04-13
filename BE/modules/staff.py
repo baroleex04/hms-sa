@@ -9,6 +9,10 @@ class StaffRole(Enum):
     DOCTOR = "Doctor"
     NURSE = "Nurse"
 
+class StaffStatus(Enum):
+    ACTIVE = "active"
+    INACTIVE = "inactive"
+
 class Ward(Enum):
     GENERAL = "General"
     ICU = "ICU"
@@ -23,6 +27,7 @@ class Staff:
         name: str,
         contact_info: str,
         role: StaffRole,
+        status: StaffStatus,
         specialization: Optional[str] = None,
         department: Optional[str] = None,
         ward: Optional[Ward] = None,
@@ -32,12 +37,13 @@ class Staff:
         self.name = name
         self.contact_info = contact_info
         self.role = role
-        self.specialization = specialization  # Only for Doctors
-        self.department = department  # Only for Doctors
-        self.ward = ward  # Only for Nurses
+        self.specialization = specialization
+        self.department = department
+        self.ward = ward
+        self.status = status
         self.shift = shift or []  # List of shifts (day, shift_type)
 
-    def update_info(self, name: Optional[str] = None, contact_info: Optional[str] = None):
+    def update_info(self, name: Optional[str] = None, contact_info: Optional[str] = None, role: Optional[str] = None, status: Optional[str] = None, specialization: Optional[str] = None, department: Optional[str] = None, ward: Optional[str] = None):
         """Update staff details in the database."""
         conn = get_db_connection()
         cursor = conn.cursor()
@@ -49,6 +55,26 @@ class Staff:
         if contact_info:
             cursor.execute("UPDATE Staff SET contact_info = %s WHERE staff_id = %s", (contact_info, self.staff_id))
             self.contact_info = contact_info
+
+        if role:
+            cursor.execute("UPDATE Staff SET role = %s WHERE staff_id = %s", (role, self.staff_id))
+            self.role = role
+
+        if status:
+            cursor.execute("UPDATE Staff SET status = %s WHERE staff_id = %s", (status, self.staff_id))
+            self.status = status
+
+        if specialization:
+            cursor.execute("UPDATE Staff SET specialization = %s WHERE staff_id = %s", (specialization, self.staff_id))
+            self.specialization = specialization
+
+        if department:
+            cursor.execute("UPDATE Staff SET department = %s WHERE staff_id = %s", (department, self.staff_id))
+            self.department = department
+
+        if ward:
+            cursor.execute("UPDATE Staff SET ward = %s WHERE staff_id = %s", (ward, self.staff_id))
+            self.ward = ward
 
         conn.commit()
         conn.close()
@@ -95,6 +121,7 @@ class Staff:
 
         # Convert role & ward from string to Enum
         role = StaffRole(staff_data["role"])
+        status = StaffStatus(staff_data["status"])
         ward = Ward(staff_data["ward"]) if staff_data["ward"] else None
 
         # Deserialize shift JSON string into list of tuples
@@ -106,6 +133,7 @@ class Staff:
             name=staff_data["name"],
             contact_info=staff_data["contact_info"],
             role=role,
+            status=status,
             specialization=staff_data.get("specialization"),
             department=staff_data.get("department"),
             ward=ward,
@@ -121,6 +149,7 @@ class Staff:
             "name": self.name,
             "contact_info": self.contact_info,
             "role": self.role.value,
+            "status": self.status.value,
             "specialization": self.specialization,
             "department": self.department,
             "ward": self.ward.value if self.ward else None,

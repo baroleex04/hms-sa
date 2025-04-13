@@ -1,8 +1,15 @@
+from datetime import date
 import mysql.connector
 from typing import List, Optional
+from enum import Enum
 
 # Database connection function
 from db_connection.db import get_db_connection
+
+class PatientGender(Enum):
+    MALE = "Male"
+    FEMALE = "Female"
+    OTHER = "Other"
 
 # MedicalHistory Class
 class MedicalHistory:
@@ -36,9 +43,10 @@ class MedicalHistory:
 
 # Patient Class
 class Patient:
-    def __init__(self, patient_id: str, name: str, date_of_birth: str, contact_info: str, medical_history: Optional[MedicalHistory] = None):
+    def __init__(self, patient_id: str, name: str, gender: PatientGender, date_of_birth: str, contact_info: str, medical_history: Optional[MedicalHistory] = None):
         self.patient_id = patient_id
         self.name = name
+        self.gender = gender
         self.date_of_birth = date_of_birth
         self.contact_info = contact_info
         self.medical_history = medical_history
@@ -59,6 +67,8 @@ class Patient:
         patient_data = cursor.fetchone()
         if not patient_data:
             return "No patient found."
+        
+        gender = PatientGender(patient_data["gender"])
 
         # Get medical history
         cursor.execute("SELECT * FROM MedicalHistory WHERE patient_id = %s", (patient_data["patient_id"],))
@@ -80,6 +90,7 @@ class Patient:
         patient = Patient(
             patient_id=patient_data["patient_id"],
             name=patient_data["name"],
+            gender=gender,
             date_of_birth=str(patient_data["date_of_birth"]),
             contact_info=patient_data["contact_info"],
             medical_history=medical_history  # Ensure medical_history is an instance of MedicalHistory
@@ -87,7 +98,7 @@ class Patient:
 
         return patient.to_dict()
 
-    def update_patient_info(self, name: Optional[str] = None, contact_info: Optional[str] = None):
+    def update_patient_info(self, name: Optional[str] = None, contact_info: Optional[str] = None, gender:Optional[str] = None, date_of_birth:Optional[date] = None):
         """Update patient info in MySQL."""
         conn = get_db_connection()
         cursor = conn.cursor()
@@ -100,6 +111,14 @@ class Patient:
             cursor.execute("UPDATE Patient SET contact_info = %s WHERE patient_id = %s", (contact_info, self.patient_id))
             self.contact_info = contact_info
 
+        if gender:
+            cursor.execute("UPDATE Patient SET gender = %s WHERE patient_id = %s", (gender, self.patient_id))
+            self.gender = gender
+
+        if date_of_birth:
+            cursor.execute("UPDATE Patient SET date_of_birth = %s WHERE patient_id = %s", (date_of_birth, self.patient_id))
+            self.date_of_birth = date_of_birth
+
         conn.commit()
         conn.close()
 
@@ -108,6 +127,7 @@ class Patient:
         return {
             "patient_id": self.patient_id,
             "name": self.name,
+            "gender": self.gender.value,
             "date_of_birth": self.date_of_birth,
             "contact_info": self.contact_info,
             "medical_history": self.medical_history.__dict__ if self.medical_history else None

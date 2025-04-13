@@ -28,7 +28,7 @@ const HomePage: React.FC = () => {
       <ServicesOverview />
       
       {/* CTA Section - Added between Services and Overview */}
-      <CTASection />
+      {/* <CTASection /> */}
       
       {/* Hospital Information Section */}
       <HospitalInfo />
@@ -37,21 +37,21 @@ const HomePage: React.FC = () => {
       <Testimonials />
       
       {/* Overview Section */}
-      <div className="p-4 my-8">
-        <h1 className="text-4xl font-bold text-center mb-6">Overview</h1>
+      {/* <div className="p-4 my-8"> */}
+        {/* <h1 className="text-4xl font-bold text-center mb-6">Overview</h1> */}
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {/* <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"> */}
           {/* Appointment Widget */}
-          <AppointmentWidget totalAppointments={totalAppointments} />
+          {/* <AppointmentWidget totalAppointments={totalAppointments} /> */}
 
           {/* Patient Widget */}
-          <PatientWidget totalPatients={totalPatients} />
+          {/* <PatientWidget totalPatients={totalPatients} /> */}
 
           {/* Staff Overview Widget */}
-          <StaffOverview />
+          {/* <StaffOverview /> */}
         </div>
-      </div>
-    </div>
+      // </div>
+    // </div>
   );
 };
 

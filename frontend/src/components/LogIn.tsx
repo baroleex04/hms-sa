@@ -18,16 +18,20 @@ const LogIn = () => {
   const loginUser = async ({ email, password }: { email: string; password: string }) => {
     try {
       // Call the login endpoint with username (email) and password
-      const response = await axios.post("http://localhost:5000/auth/login", { 
+      const response = await axios.post("http://127.0.0.1:5000/login", { 
         username: email, 
         password: password 
+      },
+      {
+        method: "POST", // Explicit but optional with axios.post
+        headers: {
+          "Content-Type": "application/json",
+        },
+        timeout: 10000,
       });
       
       // Add roles based on username
-      let role = "USER"; // Default role
-      if (email.includes("admin")) {
-        role = "ADMIN";
-      }
+      let role = "ADMIN"; // Default role     
       
       // Return formatted user data
       return {
@@ -62,13 +66,8 @@ const LogIn = () => {
       toast.success("Logged in successfully!", { autoClose: 1500 });
       
       setTimeout(() => {
-        const userRole = data.user.roles[0]; // Get user role
-
-        if (userRole === "ADMIN") {
-          navigate("/adminpage"); // If ADMIN, navigate to admin page
-        } else {
-          navigate("/"); // If not ADMIN, navigate to home page
-        }
+        navigate("/adminpage");
+        window.location.reload();      
       }, 1500);
     },
     onError: (error: any) => {

@@ -9,7 +9,6 @@ const SignUp = () => {
   const [formData, setFormData] = useState({
     firstname: "",
     lastname: "",
-    address: "",
     email: "",
     password: "",
   });
@@ -56,7 +55,7 @@ const SignUp = () => {
   };
 
   // Function to call the API to register a user
-  const registerUser = async (formData: { email: string; password: string; firstname: string; lastname: string; address: string }) => {
+  const registerUser = async (formData: { email: string; password: string; firstname: string; lastname: string }) => {
     console.log("Attempting to register with password:", formData.password);
     
     if (!validatePassword(formData.password)) {
@@ -77,16 +76,20 @@ const SignUp = () => {
       password: formData.password,
       name: `${formData.firstname} ${formData.lastname}`, // Combining first and last name
     };
-    
-    console.log("Sending user data to API:", { ...userData, password: "***" });
-    
+        
     try {
       // Call the backend API to create a user with more detailed error logging
-      const response = await axios.post("http://localhost:5000/user/add", userData, {
-        // Add a longer timeout to give the server more time to respond
-        timeout: 10000
-      });
-      console.log("API response:", response.data);
+      const response = await axios.post(
+        "http://127.0.0.1:5000/user/add",
+        userData,
+        {
+          method: "POST", // Explicit but optional with axios.post
+          headers: {
+            "Content-Type": "application/json",
+          },
+          timeout: 10000,
+        }
+      );
       
       // Return the response data
       return {
@@ -153,8 +156,8 @@ const SignUp = () => {
   };
 
   return (
-    <div className="flex h-[500px] md:h-[600px] justify-center mt-10 md:mt-20 bg-white">
-      <div className="flex bg-white overflow-hidden w-[1000px] h-[500px]">
+    <div className="flex h-full md:h-full mb-16 justify-center mt-10 md:mt-20 bg-white">
+      <div className="flex bg-white overflow-hidden w-[1000px]">
         <div className="w-1/2 hidden md:block rounded">
           <img src="/hospitalCRM.svg" alt="Sign Up" className="w-full h-full object-cover rounded" />
         </div>
@@ -180,15 +183,7 @@ const SignUp = () => {
               onChange={handleChange}
               className="w-1/2 border-b border-gray-400 text-gray-600 text-[16px] outline-none"
               />
-            </div>
-            <input
-              type="text"
-              name="address"
-              placeholder="Address"
-              value={formData.address}
-              onChange={handleChange}
-              className="w-full mb-4 border-b border-gray-400 text-gray-600 text-[16px] outline-none"
-            />
+            </div>           
             <input
               type="email"
               name="email"
@@ -262,6 +257,7 @@ const SignUp = () => {
               Log in
             </a>
           </p>
+         
         </div>
       </div>
     </div>
