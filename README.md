@@ -76,6 +76,7 @@ https://documenter.getpostman.com/view/29084125/2sB2cUANcU
 ```
 
 Please access Postman to test.
+
 ---
 ## Test full application using Docker Compose:
 Please install and setup Docker compose at local environment before doing this step.
