@@ -33,12 +33,13 @@ Then run the follow command to build the database at local:
 
 ```
 docker build -t mysql-hospital .
+docker build -t be-hospital .
 ```
 
 Then run the container of image database:
 
 ```
-docker run -d -p 3308:3306 --name mysql-hospital mysql-hospital
+
 ```
 
 If you have installed a Docker container before then you need to stop container and delete the images before you want to build a new one:
@@ -75,3 +76,29 @@ https://documenter.getpostman.com/view/29084125/2sB2cUANcU
 ```
 
 Please access Postman to test.
+---
+## Test full application using Docker Compose:
+Please install and setup Docker compose at local environment before doing this step.
+
+Run this command to run application:
+```
+docker compose up -d
+```
+
+Run this command to stop and remove all resources related to application:
+```
+docker compose down -v --rmi all
+```
+
+Add an .env file and config it like the format below (no sensitive credential as test at local environment):
+```
+MYSQL_ROOT_PASSWORD=root
+MYSQL_DATABASE=hospital_db
+MYSQL_USER=hospital_user
+MYSQL_PASSWORD=hospital_pass
+DB_HOST=mysql-hospital
+DB_PORT=3306
+DB_USER=root
+DB_PASSWORD=root
+DB_NAME=hospital_db
+```
