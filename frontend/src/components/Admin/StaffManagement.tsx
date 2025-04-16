@@ -142,9 +142,15 @@ const StaffManagement: React.FC = () => {
   const handleDelete = async (staff_id: string) => {
     if (confirm('Are you sure you want to delete this staff?')) {
       try {
-        await fetch(`http://127.0.0.1:5000/staff/delete?staff_id=${staff_id}`, {
+        const response = await fetch(`http://127.0.0.1:5000/staff/delete?staff_id=${staff_id}`, {
           method: 'DELETE',
         });
+        if (!response.ok) {
+          // Show error toast
+          toast.error('Failed to delete staff');
+          return;
+        }
+        toast.success('Staff deleted successfully!');
         await fetchStaffs();
       } catch (err) {
         console.error('Error deleting staff:', err);
